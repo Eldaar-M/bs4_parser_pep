@@ -16,15 +16,6 @@ from constants import (
 FILE_INFO = 'Файл с результатами был сохранён: {}'
 
 
-def control_output(results, cli_args):
-    output = {
-        PRETTY_FORMAT: pretty_output,
-        FILE_FORMAT: file_output,
-        None: default_output
-    }
-    output[cli_args.output](results, cli_args)
-
-
 def default_output(results, *args):
     for row in results:
         print(*row)
@@ -46,6 +37,16 @@ def file_output(results, cli_args):
     file_name = f'{parser_mode}_{now_formatted}.csv'
     file_path = results_dir / file_name
     with open(file_path, 'w', encoding='utf-8') as f:
-        writer = csv.writer(f, dialect=csv.unix_dialect)
-        writer.writerows(results)
+        csv.writer(f, dialect=csv.unix_dialect).writerows(results)
     logging.info(FILE_INFO.format(file_path))
+
+
+OUTPUTS = {
+        PRETTY_FORMAT: pretty_output,
+        FILE_FORMAT: file_output,
+        None: default_output
+}
+
+
+def control_output(results, cli_args):
+    OUTPUTS[cli_args.output](results, cli_args)

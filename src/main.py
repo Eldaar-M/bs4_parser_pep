@@ -34,6 +34,7 @@ MISMATCHED_STATUS_PHRASE = (
 NO_STATUS_PHRASE = 'На странице PEP {pep_url} нет статуса'
 PARSER_START_PHRASE = 'Парсер запущен!'
 PARSER_FINISH_PHRASE = 'Парсер завершил работу.'
+URL_ERROR = 'Ссылка: {url} недоступна'
 
 
 def whats_new(session):
@@ -41,22 +42,28 @@ def whats_new(session):
         MAIN_DOC_URL,
         'whatsnew/'
     )
-    soup = soup_create(session, whats_new_url)
-    sections_by_python = soup.select(
-        '#what-s-new-in-python div.toctree-wrapper li.toctree-l1'
+    sections_by_python = soup_create(
+        session,
+        whats_new_url
+    ).select(
+        '#what-s-new-in-python div.toctree-wrapper li.toctree-l1 > a'
     )
     results = [('Ссылка на статью', 'Заголовок', 'Редактор, Автор')]
+    logs = []
 
     for section in tqdm(sections_by_python):
-        version_a_tag = find_tag(section, 'a')
-        href = version_a_tag['href']
+        href = section['href']
         version_link = urljoin(whats_new_url, href)
         soup = soup_create(session, version_link)
-    results.append(
-        (version_link, find_tag(soup, 'h1').text,
-         find_tag(soup, 'dl').text.replace('\n', ' '))
-    )
-
+        if not soup:
+            logs.append(URL_ERROR.format(url=version_link))
+            continue
+        results.append(
+            (version_link, find_tag(soup, 'h1').text,
+                find_tag(soup, 'dl').text.replace('\n', ' '))
+        )
+    if logs:
+        logging.error(logs)
     return results
 
 
@@ -68,8 +75,8 @@ def latest_versions(session):
         if 'All versions' in ul.text:
             a_tags = ul.find_all('a')
             break
-        else:
-            raise ParserFindTagException(FIND_TAG_PHRASE)
+    else:
+        raise ParserFindTagException(FIND_TAG_PHRASE)
     results = [('Ссылка на документацию', 'Версия', 'Статус')]
     pattern = r'Python (?P<version>\d\.\d+) \((?P<status>.*)\)'
     for a_tag in a_tags:
@@ -111,27 +118,30 @@ def pep(session):
     tbody = find_tag(numerical_index, 'tbody')
     tr = tbody.find_all('tr')
     status_count = defaultdict(int)
-    error_phrases = []
+    logs = []
     for pep in tqdm(tr):
         preview_status = pep.find('td').text[1:]
         if preview_status in EXPECTED_STATUS:
             status_list = EXPECTED_STATUS[preview_status]
         else:
             status_list = []
-            error_phrases.append(INCORRECT_STATUS_PHRASE.format(
+            logs.append(INCORRECT_STATUS_PHRASE.format(
                  preview_status=preview_status,
                  pep=pep
                 ))
         href = pep.find('a')['href']
         pep_url = urljoin(PEP_DOCS_URL, href)
         soup = soup_create(session, pep_url)
+        if not soup:
+            logs.append(URL_ERROR.format(url=pep_url))
+            continue
         dl = find_tag(soup, 'dl', {'class': 'rfc2822 field-list simple'})
         status = dl.find(string='Status')
         if status:
             status_parent = status.find_parent()
             status_card = status_parent.next_sibling.next_sibling.string
             if status_card not in status_list:
-                error_phrases.append(
+                logs.append(
                     MISMATCHED_STATUS_PHRASE.format(
                      pep_url=pep_url,
                      status_card=status_card,
@@ -140,14 +150,14 @@ def pep(session):
                 )
             status_count[status_card] += 1
         else:
-            error_phrases.append(
+            logs.append(
                     NO_STATUS_PHRASE.format(
                      pep_url=pep_url,
                     )
                 )
             continue
-    if error_phrases:
-        logging.error(*error_phrases)
+    if logs:
+        logging.error(logs)
     return [
         ('Статус', 'Количество'),
         *status_count.items(),
@@ -180,8 +190,7 @@ def main():
     except Exception as exception:
         logging.exception(
             msg=f'{ERROR_PHRASE} {exception}',
-            stack_info=True,
-            exc_info=True
+            stack_info=True
         )
     logging.info(PARSER_FINISH_PHRASE)
 
