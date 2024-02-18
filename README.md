@@ -11,6 +11,19 @@
 ```
 git clone git@github.com:Eldaar-M/bs4_parser_pep.git
 ```
+## Перейдите в корневую папку проекта
+- Разверните виртуальное окружение
+```
+python -m venv venv
+```
+- Активируйте виртуальное окружение:
+```
+source venv/Scripts/activate
+```
+- Установите зависимости:
+```
+pip install -r requirements.txt
+```
 ## Cмените папку на src
 ```
 cd src/

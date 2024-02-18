@@ -42,9 +42,9 @@ def file_output(results, cli_args):
 
 
 OUTPUTS = {
-        PRETTY_FORMAT: pretty_output,
-        FILE_FORMAT: file_output,
-        None: default_output
+    PRETTY_FORMAT: pretty_output,
+    FILE_FORMAT: file_output,
+    None: default_output
 }
 
 

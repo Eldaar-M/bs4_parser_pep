@@ -54,14 +54,15 @@ def whats_new(session):
     for section in tqdm(sections_by_python):
         href = section['href']
         version_link = urljoin(whats_new_url, href)
-        soup = soup_create(session, version_link)
-        if not soup:
+        try:
+            soup = soup_create(session, version_link)
+            results.append(
+             (version_link, find_tag(soup, 'h1').text,
+              find_tag(soup, 'dl').text.replace('\n', ' '))
+            )
+        except Exception:
             logs.append(URL_ERROR.format(url=version_link))
             continue
-        results.append(
-            (version_link, find_tag(soup, 'h1').text,
-                find_tag(soup, 'dl').text.replace('\n', ' '))
-        )
     if logs:
         logging.error(logs)
     return results
@@ -131,8 +132,9 @@ def pep(session):
                 ))
         href = pep.find('a')['href']
         pep_url = urljoin(PEP_DOCS_URL, href)
-        soup = soup_create(session, pep_url)
-        if not soup:
+        try:
+            soup = soup_create(session, pep_url)
+        except Exception:
             logs.append(URL_ERROR.format(url=pep_url))
             continue
         dl = find_tag(soup, 'dl', {'class': 'rfc2822 field-list simple'})
