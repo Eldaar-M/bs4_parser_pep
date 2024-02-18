@@ -62,7 +62,6 @@ def whats_new(session):
             )
         except Exception:
             logs.append(URL_ERROR.format(url=version_link))
-            continue
     if logs:
         logging.error(logs)
     return results
